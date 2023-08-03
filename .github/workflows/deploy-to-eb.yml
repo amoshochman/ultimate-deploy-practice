@@ -72,5 +72,5 @@ jobs:
           application_name: hello-world
           environment_name: Hello-world-env
           version_label: "docker-app-${{ steps.format-time.outputs.replaced }}"
-          region: us-east-1
+          region: us-east-2
           deployment_package: deploy.zip
