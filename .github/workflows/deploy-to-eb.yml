@@ -1,12 +1,76 @@
-name: deploy-to-eb
+name: Deploy to AWS EBS
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.9"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      # Run our unit tests using the test application
+      - name: Run unit tests
+        run: pytest
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t amoshochman/hello-world:latest .
+          docker push amoshochman/hello-world:latest
+        env:
+            DOCKER_BUILDKIT: 1
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+            # .github/workflows/main.yml continued
+
+      - name: Get Timestamp
+        uses: gerred/actions/current-time@master
+        id: current-time
+
+      - name: Run String Replace
+        uses: frabert/replace-string-action@master
+        id: format-time
+        with:
+          pattern: '[:\.]+'
+          string: "${{ steps.current-time.outputs.time }}"
+          replace-with: '-'
+          flags: 'g'
+
+      - name: Generate Deployment Package
+        run: zip -r deploy.zip * -x "**node_modules**"
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v16
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: hello-world
+          environment_name: Hello-world-env
+          version_label: "docker-app-${{ steps.format-time.outputs.replaced }}"
+          region: us-east-1
+          deployment_package: deploy.zip
