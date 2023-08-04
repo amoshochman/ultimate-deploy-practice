@@ -34,8 +34,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker-compose build
-          docker-compose push
+          docker build -t amoshochman/hello-world:latest .
+          docker push amoshochman/hello-world:latest
         env:
             DOCKER_BUILDKIT: 1
 
