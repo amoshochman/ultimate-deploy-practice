@@ -1,3 +1,5 @@
-Flask
+Flask~=2.3.2
 pytest
 
+
+redis~=4.6.0
